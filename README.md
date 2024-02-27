@@ -19,12 +19,12 @@ Project Requirements (cumulative for all files):
 Current Project Files:
 <br>applications/viewer.py: This file is a copy of a simple PDF viewer that I created recently (original code: https://github.com/AaronTook/PySimplePDF). When a GUI application for all functionality is later created, my intention is to use it to preview documents before deciding to save them.
 <br>operations/merge.py: This file contains a class that can be used to create objects which represent a file to have pages added or removed. This functionality essentially merges various portions of any number of PDFs together to produce a desired result.
+<br>operations/encryption.py: This file contains functions that can be used to create encrypted and decrypted versions of PDF files.
 
 ----------------------------
 
 Future Project Plans:
 <br>applications/markup.py: This file will run an application like viewer.py, but with the ability to add text overlays to each page of a PDF.
-<br>operations/encryption.py: This file will contain functions that can be used to create encrypted and decrypted versions of PDF files.
 <br>operations/compress.py: This file will contain functionality for file compression.
 <br>operations/extract.py: This file will contain functions to extract images or text from a PDF.
 <br>operations/watermark.py: This file will contain the functions to add a watermark to each page of a PDF document.
