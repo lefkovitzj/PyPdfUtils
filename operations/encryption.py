@@ -11,7 +11,7 @@ import os
 
 def calculate_pdf_temp_title(action):
     tb = str(datetime.datetime.today()) # Basic timestamp string, with the type of action included.
-    file_title = tb[:4] + "-" + tb[5:7] + "-" + tb[8:10] + "_" + tb[11:13] + "-" + tb[14:16] + "-" + tb[17:19] + "_" + action + "_" + ".pdf"
+    file_title = tb[:4] + "-" + tb[5:7] + "-" + tb[8:10] + "_" + tb[11:13] + "-" + tb[14:16] + "-" + tb[17:19] + "_" + action + ".pdf"
     return file_title
 
 class PDF_Crypter():
