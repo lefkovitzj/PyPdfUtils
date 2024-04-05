@@ -1,8 +1,8 @@
 """
     Author: AaronTook (https://AaronTook.github.io)
-    File Last Modified: 2/25/2024
-    Project Name: PyPdfUtils
-    File Name: applications/viewer.py
+    File Last Modified: 4/20/2024
+    Project Name: PySimplePDF
+    File Name: app.py
 """
 
 # Python Standard Library Imports.
@@ -10,6 +10,7 @@ import os
 import sys
 from tkinter import *
 from tkinter import filedialog
+import traceback
 
 # Third-party Module Imports.
 from PIL import Image, ImageTk
@@ -56,7 +57,10 @@ if __name__ == "__main__":
         page0_dimensions = (page0.rect.width, page0.rect.height)
         page = page0
         
-        last_mod_time = calculate_from_pdf_timestamp(doc.metadata["modDate"]) # Get the date that the file was last modified from the metadata.
+        try: # If last modified is not included in the file metadata, prevent crash and set value to False.
+            last_mod_time = calculate_from_pdf_timestamp(doc.metadata["modDate"]) # Get the date that the file was last modified from the metadata.
+        except:
+            last_mod_time = False
         
         root = ctk.CTk() # Create the GUI window.
         screen_height = root.winfo_screenheight()
@@ -66,6 +70,8 @@ if __name__ == "__main__":
         root.resizable(width=False, height=True) # Prevent the user from changing the width of the window.
         
         display_message = ctk.CTkLabel(root, text=f"File path: {os.path.split(file_path)[1]}\nLast modified: {last_mod_time}", anchor="w", width = page0_dimensions[0], justify="left")
+        if not last_mod_time: # If the metadata didn't include last modified, don't display the value.
+            display_message.configure(text=f"File path: {os.path.split(file_path)[1]}")
         display_message.pack() # Add a message with file details to the window.
         
         pdf_frame = ctk.CTkScrollableFrame(master = root, width = page0_dimensions[0], height = display_height) # Create and configure a frame to hold the PDF page images.
@@ -91,5 +97,5 @@ if __name__ == "__main__":
         
         root.mainloop() # Create the GUI window application.
     
-    except Exception as e: # Handle any application errors by returning them to the user without crashing.
-        print(f"Error Message: \"{e}\"")
+    except Exception: # Handle any application errors by returning them to the user without crashing.
+        print(f"Error Message: \"{traceback.format_exc()}\"")
