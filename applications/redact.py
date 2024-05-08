@@ -2,7 +2,7 @@
     Author: AaronTook (https://AaronTook.github.io)
     File Last Modified: 5/8/2024
     Project Name: PySimplePDF
-    File Name: applications/draw.py
+    File Name: applications/redact.py
 """
 
 # Python Standard Library Imports.
@@ -28,7 +28,7 @@ def gui_get_file(initial_directory="", limit_filetypes=[]):
     file_path, file_name = os.path.split(complete_file_path) # Get the filepath and filename to return to the user.
     return complete_file_path, file_name
 
-class Draw_On_Viewer():
+class Redact_Viewer():
     def __init__(self):
         if len(sys.argv) == 1: # No argument provided, request file path.
             self.file_path = gui_get_file()[0]
@@ -44,11 +44,12 @@ class Draw_On_Viewer():
             self.page_i = 0
             self.scale = 1
             
+            
+            
             # Modfication attributes:
-            self.page_points = [[] for i in range(len(self.doc))]
-            self.active_stroke = []
-            self.undone_points = [[] for i in range(len(self.doc))]
-
+            self.active_start = (None, None)
+            self.redactions = [[] for i in range(len(self.doc))]
+            self.undone_redactions = [[] for i in range(len(self.doc))]
             
             self.root = ctk.CTk() # Create the GUI window.
             self.screen_height =self. root.winfo_screenheight()
@@ -76,7 +77,7 @@ class Draw_On_Viewer():
             # Event binds.
             self.root.bind("<Left>", self.previous_page)
             self.root.bind("<Right>", self.next_page)
-            self.root.bind("<B1-Motion>", self.add_coords)
+            self.root.bind("<Button-1>", self.set_start)
             self.root.bind("<ButtonRelease-1>", self.set_end)
             self.root.bind("<Control-s>", self.save_pdf_markup)
             self.root.bind("<Control-z>", self.undo)
@@ -88,37 +89,21 @@ class Draw_On_Viewer():
         except Exception: # Handle any application errors by returning them to the user without crashing.
             print(f"Error Message: \"{traceback.format_exc()}\"")
         
-    def add_coords(self, event): # Add to a click stroke.
-        self.active_stroke.append((event.x, event.y))
-        if len(self.active_stroke) > 1:
-            self.pdf_canvas.create_line(self.active_stroke, fill="red")
+    def set_start(self, event): # Add to a click stroke.
+        self.active_start = (event.x, event.y)
 
     def set_end(self, event): # End of a click stroke.
-        if len(self.active_stroke) > 1:
-            self.page_points[self.page_i].append(self.active_stroke)
-            self.pdf_canvas.create_line(self.active_stroke, fill="red")
-        self.active_stroke = []
-        self.undone_points[self.page_i] = [] # Clear undone redactions, can no longer "undo"
-        
-    def undo(self, event): # Undo marking.
-        if len(self.page_points[self.page_i]) > 0:
-            most_recent = self.page_points[self.page_i][-1]
-            self.page_points[self.page_i].pop(-1)
-            self.undone_points[self.page_i].append(most_recent)
-            self.update_page(self.page_i)
-            self.redraw_page(self.page_i)
-
-    def redo(self, event): # Redo marking.
-        if len(self.undone_points[self.page_i]) > 0:
-            most_recent = self.undone_points[self.page_i][-1]
-            self.undone_points[self.page_i].pop(-1)
-            self.page_points[self.page_i].append(most_recent)
-            self.update_page(self.page_i)
-            self.redraw_page(self.page_i)
+        if (self.active_start[0] != None) and (self.active_start[1] != None):
+            rectlike = (self.active_start[0], self.active_start[1], event.x, event.y) # Create and add rect-like (4-value tuple) to redactions.
+            self.redactions[self.page_i].append(rectlike) 
+            self.active_start = (None, None)
+            self.pdf_canvas.create_rectangle(rectlike, fill="black", outline="black")
+            self.undone_redactions[self.page_i] = [] # Clear undone redactions, can no longer "undo"
     
     def redraw_page(self, page_num): # Reload all drawings on the page.
-        for pointset in self.page_points[page_num]:
-            self.pdf_canvas.create_line(pointset, fill="red")
+        for redactionRectlike in self.redactions[page_num]:
+            x1, y1, x2, y2 = redactionRectlike
+            self.pdf_canvas.create_rectangle(x1,y1,x2,y2, fill="black", outline="black")
     
     def update_page(self, page_num): # Load the page.
         page = self.doc[page_num]
@@ -137,7 +122,23 @@ class Draw_On_Viewer():
         self.pdf_canvas.create_image(0,0, image=tkimg, anchor="nw")
         
         self.root.update()
-            
+    
+    def undo(self, event): # Undo redaction.
+        if len(self.redactions[self.page_i]) > 0:
+            most_recent = self.redactions[self.page_i][-1]
+            self.redactions[self.page_i].pop(-1)
+            self.undone_redactions[self.page_i].append(most_recent)
+            self.update_page(self.page_i)
+            self.redraw_page(self.page_i)
+
+    def redo(self, event): # Redo redaction.
+        if len(self.undone_redactions[self.page_i]) > 0:
+            most_recent = self.undone_redactions[self.page_i][-1]
+            self.undone_redactions[self.page_i].pop(-1)
+            self.redactions[self.page_i].append(most_recent)
+            self.update_page(self.page_i)
+            self.redraw_page(self.page_i)
+    
     def next_page(self, *args): # Change the page (+).
         page_i = self.page_i
         if page_i+1 <= len(self.doc)-1:
@@ -155,11 +156,13 @@ class Draw_On_Viewer():
     def save_pdf_markup(self, event): # Save the modified pdf document.
         for page_i in range(len(self.doc)):
             page = self.doc[page_i]
-            markings = self.page_points[page_i]
-            page.add_ink_annot(markings)
+            redactions = self.redactions[page_i]
+            for redaction_rectlike in redactions:
+                page.add_redact_annot(redaction_rectlike, fill=(0,0,0))
+            page.apply_redactions()
             
         self.doc.save(f"{self.file_path} - edited.pdf")
         self.root.destroy()
 
 if __name__ == "__main__":
-    app = Draw_On_Viewer()
+    app = Redact_Viewer()
